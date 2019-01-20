@@ -15,7 +15,7 @@ from sklearn.preprocessing import normalize
 from multiprocessing import Process, Manager
 from pdb import set_trace
 
-logger = logging.getLogger()
+logger = logging.getLogger("fastGraph")
 
 DUPLICATION_WARN_THRESHOLD = 0.2
 
@@ -119,8 +119,8 @@ class Graph():
 		logger.info("Graph.edges is valid with shape= "+str(self.edges.shape))
 
 		if outward_prob_check:
-			logger.warning("Enabeling outward_prob_check will check whether each row sum to zero. Might be very slow! ")
-			logger.warning("Disable it by setting build_graph_from_matriz(..., outward_prob_check=False)  ")
+			logger.warning("Enabeling outward_prob_check will check whether each row sum to zero. Might be very slow! "
+			               "Disable it by setting build_graph_from_matriz(..., outward_prob_check=False)  ")
 			for row_i in range(self.edges.shape[0]):
 				npsum = np.sum(self.edges[row_i,:])
 				if abs(npsum - 1.0) > precesion_error and npsum != 0.0: # Outward probability might be all zero.
@@ -310,7 +310,7 @@ class Graph():
 				break
 		return [str(node) for node in path]
 
-	#TODO: Built beautiful multiprocess
+	# TODO: Build correct way of multiprocessing
 	def likely_walk_multiprocess(self, shared_list, path_length, rand=random.Random(), start=None):
 		if start:
 			path = [start]
@@ -352,8 +352,7 @@ class Graph():
 		To avoid "Connection Refused Error", num_paths should be set below the number of available threads.
 		'''
 		logger.info("Likely Walking with multiprocessing ...")
-		if num_paths > 7:
-			# FIXME
+		if num_paths > 7: # TODO: Build correct way of multiprocessing
 			logger.warning("Setting num_paths higher than the thread count might cause Connection Lost Error.")
 
 		walks = []
@@ -373,14 +372,15 @@ class Graph():
 				for p in processes:
 					p.join()
 				walks.extend(L)
-			if int(idx/(nodes_len/1000)) > percent_done:
+			if int(idx/(nodes_len/100)) > percent_done:
 				percent_done += 1
-				logger.info(str(percent_done/10)+"% done, with "+str(len(walks))+" paths walked.")
+				logger.info(str(percent_done)+"% done, with "+str(len(walks))+" paths walked.")
 
 		return self.check_walks(walks, rand, shuffle, deduplicate)
 
-	def build_graph_from_matrix(self, x, is_directed=True, remove_self_loops=False, normalized_edge=True, outward_prob_check=True ):
+	def build_graph_from_matrix(self, x, is_directed=True, remove_self_loops=False, normalized_edge=True, outward_prob_check=False):
 		# The x matrix is exactly the relationship map between them.
+		logger.info("Building graph.")
 		self.edges = x #For memmap compatibility
 		if not issparse(self.edges):
 			logger.info("Transforming into scipy sparse matrix")
@@ -389,8 +389,6 @@ class Graph():
 		# Iterate through matrix to get directed node -> node relationship
 		logger.info("Build relation matrix (self.edges)")
 		row_idxs, col_idxs = csr_matrix.nonzero(self.edges)
-		import pdb
-		pdb.set_trace()
 		assert len(row_idxs)==len(col_idxs)
 		for i in range(len(row_idxs)):
 			self.nodes[row_idxs[i]].append(col_idxs[i])
@@ -430,23 +428,12 @@ class Graph():
 		# Normalization for neighbor probabilities
 		sum_prob = sum(neighbor_probs)
 		neighbor_probs = np.asfarray([p/sum_prob for p in neighbor_probs], dtype='float32')
-		#end = time()
-		#logger.info("Iteration cost: "+str(end-start)+"s")
 
-		# NOTE: Random sampling with log_2-N
-		# next_node = neighbor_nodes[np.random.choice(len(neighbor_probs), 1, p=neighbor_probs)[0]]
-
-		# NOTE: Using 'alias' that random sampling with
-		#J, q = alias_setup(neighbor_probs)
-		#next_node = neighbor_nodes[alias_draw(J,q)]
-		#start = time()
 		J, q = alias_setup(neighbor_probs)
-		#end = time()
-		#logger.info("Alias setup cost: "+str(end-start)+"s")
 		return J, q
 
 	def preprocess_node2vec_walk(self, p, q):
-		logger.info("Preprocessing pq sampled probabilities for node2vec walk...")
+		logger.info("Preprocessing p, q sampled probabilities for node2vec walk...")
 		self.alias_edge = dict()
 
 		total_nodes = len(self.nodes.keys())
@@ -454,22 +441,12 @@ class Graph():
 		for i, prev in enumerate(self.nodes.keys()):
 			cur_nodes = self.nodes.get(prev, [])
 			for cur in cur_nodes:
-				self.alias_edge[(prev,cur)] = self.get_alias_edge(prev,cur,p,q)
+				self.alias_edge[(prev,cur)] = self.get_alias_edge(prev, cur, p, q)
 			if i/(total_nodes/100) > percent_done:
 				percent_done += 1
 				logger.info(str(percent_done)+"% done")
 		logger.info("Done.")
 
-
-def load_memmapfile(file_):
-	filename = file_.split('/')[-1]
-	filepre = filename.split('.')[0]
-	shape0 = int(filepre.split('_')[-2])
-	shape1 = int(filepre.split('_')[-1])
-
-	fp = np.memmap(file_, dtype='float32', mode='r', shape=(shape0,shape1))
-	logger.info("Reading filename: "+filename+", with shape of "+str((shape0,shape1)))
-	return fp
 
 def alias_setup(probs):
 	"""
