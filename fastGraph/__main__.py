@@ -76,7 +76,7 @@ def load_matrix(args):
 		# Implement parsing here to transform into matrix form.
 		raise NotImplementedError("Implement customized parsing here.")
 
-def main(args):
+def fastGraph_flow(args):
 	# Read and process different input
 	matrix = load_matrix(args)
 	logger.info("Matrix loaded.")
@@ -123,7 +123,7 @@ def main(args):
 	w2v.save(args.output)
 
 
-if __name__ == "__main__":
+def main():
 	parser = ArgumentParser("fastGraph", formatter_class=ArgumentDefaultsHelpFormatter, conflict_handler='resolve')
 
 	parser.add_argument("-l", "--log", dest="log", default="INFO",
@@ -176,4 +176,7 @@ if __name__ == "__main__":
 	logging.basicConfig(format=LOGFORMAT)
 	logger.setLevel(numeric_level)
 
-	sys.exit(main(args))
+	fastGraph_flow(args)
+
+if __name__ == "__main":
+	sys.exit(main())
