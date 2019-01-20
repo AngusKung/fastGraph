@@ -9,15 +9,21 @@ Built for both undirected, directed and both weighted-, binary-edge graph.
 
 Dev Usage
 -------
-``python fastGraph/__main__.py --input example_graph/wiki-Vote.csv --output example_graph/wiki-Vote.model
---walk-type node2vec --ngram 1 --number-paths 5 --embed-size 64 --path-length 40``
+::
+
+  python fastGraph/__main__.py --input example_graph/wiki-Vote.csv --output example_graph/wiki-Vote.model
+  --walk-type node2vec --ngram 1 --number-paths 5 --embed-size 64 --path-length 40
 
 Package Installation & Usage
 -------
 ``cd fastGraph``
+
 ``pip install -r requirements.txt``
-``fastGraph --input example_graph/wiki-Vote.csv --output example_graph/wiki-Vote.model
---walk-type node2vec --ngram 1 --number-paths 5 --embed-size 64 --path-length 40``
+
+::
+
+  fastGraph --input example_graph/wiki-Vote.csv --output example_graph/wiki-Vote.model
+  --walk-type node2vec --ngram 1 --number-paths 5 --embed-size 64 --path-length 40
 
 Pip Installation
 -------
