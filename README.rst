@@ -1,13 +1,9 @@
 ===========
 fastGraph
 ===========
-
-A fast and lightweight package designed for Graph Embedding.
-
-Built for DeepWalk, node2vec walk and likely walk(sampled with edges of transition probability).
-
-Built for both undirected, directed and both weighted-, binary-edge graph.
-
+| A fast and lightweight package designed for Graph Embedding.  
+| Built for DeepWalk, node2vec walk and likely walk(sampled with edges of transition probability).  
+| Built for both undirected, directed and both weighted-, binary-edge graph.  
 
 Dev Usage
 -------
