@@ -255,6 +255,8 @@ class Graph():
 			alpha: probability of restarts.
 			start: the start node of the random walk.
 		'''
+		is_unipath = True
+
 		if start:
 			path = [start]
 		else:
@@ -265,22 +267,32 @@ class Graph():
 			cur = path[-1]
 			neighbor_nodes = self.nodes.get(cur, [])
 
+			if len(neighbor_nodes) > 1:
+				is_unipath = False
+
 			if len(neighbor_nodes) > 0:
 				path.append(rand.choice(neighbor_nodes))
 			else:
 				break
-		return [str(node) for node in path]
+		return [str(node) for node in path], is_unipath
 
 	def build_deepwalk_corpus(self, num_paths, path_length, rand=random.Random(0), shuffle=True, deduplicate=False):
+		logger.info("Deep Walking")
 		walks = []
-		nodes = list(self.nodes.keys()) * num_paths
-		total_paths = len(nodes)
+		nodes = list(self.nodes.keys())
+		nodes_len = len(nodes)
+
+
 		percent_done = 0
 		logger.info("Deep Walking with "+str(num_paths)+" paths per node and each path length of "+str(path_length))
 
 		for idx, node in enumerate(nodes):
-			walks.append(self.random_walk(path_length, rand=rand, start=node))
-			if int(idx/(total_paths/100)) > percent_done:
+			for ctn in range(num_paths):
+				new_walk, is_unipath = self.random_walk(path_length, rand=rand, start=node)
+				walks.append(new_walk)
+				if is_unipath:
+					break
+			if int(idx/(nodes_len/100)) > percent_done:
 				percent_done += 1
 				logger.info(str(percent_done)+"% done")
 
@@ -292,6 +304,8 @@ class Graph():
 		return self.build_deepwalk_corpus(num_paths, path_length, rand=rand, shuffle=shuffle)
 
 	def likely_walk(self, path_length, rand=random.Random(), start=None):
+		is_unipath = True
+
 		if start:
 			path = [start]
 		else:
@@ -301,6 +315,8 @@ class Graph():
 		while len(path) < path_length:
 			cur = path[-1]
 			neighbor_nodes = self.nodes.get(cur, [])
+			if len(neighbor_nodes) > 1:
+				is_unipath = False
 
 			if len(neighbor_nodes) > 0:
 				neighbor_probs = [self.edges[cur, node] for node in neighbor_nodes]
@@ -308,7 +324,7 @@ class Graph():
 				path.append(next_node)
 			else:
 				break
-		return [str(node) for node in path]
+		return [str(node) for node in path], is_unipath
 
 	# TODO: Build correct way of multiprocessing
 	def likely_walk_multiprocess(self, shared_list, path_length, rand=random.Random(), start=None):
@@ -339,8 +355,12 @@ class Graph():
 
 		percent_done = 0
 		for idx, node in enumerate(nodes):
-			for cnt in range(num_paths):
-				walks.append(self.likely_walk(path_length, rand=rand, start=node))
+			if len(self.nodes.get(node,[])) != 0:
+				for cnt in range(num_paths):
+					new_walks, is_unipath = self.likely_walk(path_length, rand=rand, start=node)
+					walks.append(new_walks)
+					if is_unipath:
+						break
 			if int(idx / (nodes_len / 100)) > percent_done:
 				percent_done += 1
 				logger.info(str(percent_done) + "% done")
@@ -362,16 +382,17 @@ class Graph():
 
 		percent_done = 0
 		for idx, node in enumerate(nodes):
-			with Manager() as manager:
-				L = manager.list()
-				processes = []
-				for cnt in range(num_paths):
-					p = Process(target=self.likely_walk_multiprocess, args=(L, path_length, rand, node))
-					p.start()
-					processes.append(p)
-				for p in processes:
-					p.join()
-				walks.extend(L)
+			if len(self.nodes.get(node, [])) != 0:
+				with Manager() as manager:
+					L = manager.list()
+					processes = []
+					for cnt in range(num_paths):
+						p = Process(target=self.likely_walk_multiprocess, args=(L, path_length, rand, node))
+						p.start()
+						processes.append(p)
+					for p in processes:
+						p.join()
+					walks.extend(L)
 			if int(idx/(nodes_len/100)) > percent_done:
 				percent_done += 1
 				logger.info(str(percent_done)+"% done, with "+str(len(walks))+" paths walked.")
