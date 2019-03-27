@@ -319,8 +319,8 @@ class Graph():
 				is_unipath = False
 
 			if len(neighbor_nodes) > 0:
-				neighbor_probs = [self.edges[cur, node] for node in neighbor_nodes]
-				next_node = neighbor_nodes[np.random.choice(len(neighbor_probs), 1, p=neighbor_probs)[0]]
+				neighbor_probs = np.asarray(self.edges[cur, neighbor_nodes].todense()).reshape(-1)
+				next_node = neighbor_nodes[weighted_random(neighbor_probs, len(neighbor_nodes))]
 				path.append(next_node)
 			else:
 				break
@@ -339,8 +339,8 @@ class Graph():
 			neighbor_nodes = self.nodes.get(cur, [])
 
 			if len(neighbor_nodes) > 0:
-				neighbor_probs = [self.edges[cur, node] for node in neighbor_nodes]
-				next_node = neighbor_nodes[np.random.choice(len(neighbor_probs), 1, p=neighbor_probs)[0]]
+				neighbor_probs = np.asarray(self.edges[cur, neighbor_nodes].todense()).reshape(-1)
+				next_node = neighbor_nodes[weighted_random(neighbor_probs, len(neighbor_nodes))]
 				path.append(next_node)
 			else:
 				break
@@ -512,3 +512,8 @@ def alias_draw(J, q):
 		return kk
 	else:
 		return J[kk]
+
+def weighted_random(w, n):
+    cumsum = np.cumsum(w)
+    rdm_unif = np.random.rand(n)
+    return np.searchsorted(cumsum, rdm_unif)[0]
